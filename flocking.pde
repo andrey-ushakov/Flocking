@@ -28,30 +28,39 @@ void setup() {
 void draw() {
   background(204);
   
-  // display boids
-  for (int i=0; i < boids.size(); ++i) {
-    // perception
-    fill(perceptionC);
-    ellipse(boids.get(i).pos.x, boids.get(i).pos.y, perception, perception);
-    
-    // repulsion
-    fill(repulsionC);
-    ellipse(boids.get(i).pos.x, boids.get(i).pos.y, repulsion, repulsion);
-    
-    // boid
-    fill(boidC);
-    ellipse(boids.get(i).pos.x, boids.get(i).pos.y, boidSize, boidSize);
-    line(boids.get(i).pos.x, boids.get(i).pos.y, boids.get(i).dir.x, boids.get(i).dir.y);
-  }
-  
-  
-  // update boids position
+  displayBoids();
+  updateBoidsPosition();
+}
+
+
+void updateBoidsPosition() {
   for (int i=0; i < boids.size(); ++i) {
     PVector vect = PVector.mult(PVector.sub(boids.get(i).dir, boids.get(i).pos), speed);
     boids.get(i).pos = PVector.add(boids.get(i).pos, vect);
 
   }
-  
+}
+
+
+
+
+void displayBoids() {
+  for (int i=0; i < boids.size(); ++i) {
+    // perception
+    noStroke();
+    fill(perceptionC, 25);
+    ellipse(boids.get(i).pos.x, boids.get(i).pos.y, perception, perception);
+    
+    // repulsion
+    fill(repulsionC, 25);
+    ellipse(boids.get(i).pos.x, boids.get(i).pos.y, repulsion, repulsion);
+    
+    // boid
+    stroke(1);
+    fill(boidC);
+    ellipse(boids.get(i).pos.x, boids.get(i).pos.y, boidSize, boidSize);
+    line(boids.get(i).pos.x, boids.get(i).pos.y, boids.get(i).dir.x, boids.get(i).dir.y);
+  }
 }
 
 
