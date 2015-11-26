@@ -1,3 +1,6 @@
+
+// TODO Add border collision
+
 public class Boid {
   public PVector pos;  // current position
   public PVector dir;  // current direction
@@ -29,9 +32,37 @@ void draw() {
   background(204);
   
   displayBoids();
+  updateBoidsDirection();
   updateBoidsPosition();
 }
 
+
+
+
+void updateBoidsDirection() {
+  for (int i=0; i < boids.size(); ++i) {
+    PVector accel = new PVector(0, 0);
+    
+    for (int j=0; j < boids.size(); ++j) {
+      if(i != j) {
+        // calculate acceleration vector
+        PVector vect = PVector.sub(boids.get(j).pos, boids.get(i).pos);  // vector between 2 boids
+        if( isBoidInRepulsionZone(boids.get(i).pos, boids.get(j).pos) ) {
+          // TODO Add force
+          accel = PVector.sub(accel, vect);  // repulsion
+        } else if( isBoidInPerceptionZone(boids.get(i).pos, boids.get(j).pos) ) {
+          // TODO Add force
+          accel = PVector.add(accel, vect);  // attraction
+        } else {
+          // do nothing : out of perception zone
+        }
+        
+        // update i-boid direction
+        boids.get(i).dir = PVector.add(boids.get(i).dir, accel);
+      }
+    }
+  }
+}
 
 void updateBoidsPosition() {
   for (int i=0; i < boids.size(); ++i) {
@@ -40,9 +71,6 @@ void updateBoidsPosition() {
 
   }
 }
-
-
-
 
 void displayBoids() {
   for (int i=0; i < boids.size(); ++i) {
@@ -59,7 +87,7 @@ void displayBoids() {
     stroke(1);
     fill(boidC);
     ellipse(boids.get(i).pos.x, boids.get(i).pos.y, boidSize, boidSize);
-    line(boids.get(i).pos.x, boids.get(i).pos.y, boids.get(i).dir.x, boids.get(i).dir.y);
+    //line(boids.get(i).pos.x, boids.get(i).pos.y, boids.get(i).dir.x, boids.get(i).dir.y);
   }
 }
 
@@ -78,4 +106,20 @@ void initBoids(int boidsNum) {
     
     boids.add(boid);
   }
+}
+
+
+// c : center of perception zone
+boolean isBoidInPerceptionZone(PVector c, PVector boid) {
+  float a = pow(boid.x - c.x, 2);
+  float b = pow(boid.y - c.y, 2);
+  return a + b < pow(perception, 2);
+}
+
+
+// c : center of repulsion zone
+boolean isBoidInRepulsionZone(PVector c, PVector boid) {
+  float a = pow(boid.x - c.x, 2);
+  float b = pow(boid.y - c.y, 2);
+  return a + b < pow(repulsion, 2);
 }
