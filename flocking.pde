@@ -7,7 +7,7 @@ public class Boid {
 
 ArrayList<Boid> boids = new ArrayList<Boid>();
 int boidSize         = 10;
-final float speed    = 0.0001;
+final float speed    = 4;
 final int perception = 80;  // radius of perception
 final int repulsion  = 30;  // radius of repulsion
 color boidC          = color(255, 255, 255);
@@ -21,7 +21,7 @@ PVector r            = new PVector(200, 400);
 void setup() {
   size(800, 600);
   //size(displayWidth, displayHeight);
-  initBoids(2);
+  initBoids(30);
 
 }
 
@@ -30,46 +30,109 @@ void draw() {
   background(204);
   
   displayBoids();
-  updateBoidsDirection();
   updateBoidsPosition();
 }
 
 
 
-
-void updateBoidsDirection() {
+PVector alignment(Boid boid) {
+  PVector res = new PVector(0, 0);
+  int nearBoidsCount = 0;
+  
   for (int i=0; i < boids.size(); ++i) {
-    //PVector accel = boids.get(i).pos;//new PVector(0, 0);
-    PVector accel = new PVector(0, 0); 
+    if(boid.pos == boids.get(i).pos) continue;
     
-    for (int j=0; j < boids.size(); ++j) {
-      if(i != j) {
-        float dist = PVector.dist(boids.get(j).pos, boids.get(i).pos);
-        //float dist = sqrt((boids.get(i).pos.x - boids.get(j).pos.x) * (boids.get(i).pos.x - boids.get(j).pos.x) 
-         //             + (boids.get(i).pos.y - boids.get(j).pos.y) * (boids.get(i).pos.y - boids.get(j).pos.y));
-        
-        float force = (g.y - g.y / g.x * dist) - (r.y - r.y / r.x * dist);
-        
-        accel.x += (boids.get(j).pos.x - boids.get(i).pos.x) / dist * force * speed;
-        accel.y += (boids.get(j).pos.y - boids.get(i).pos.y) / dist * force * speed;
-        
-      }
+    if(isBoidInPerceptionZone(boid.pos, boids.get(i).pos)) {
+      res = PVector.add(res, boids.get(i).dir);
+      nearBoidsCount++;
     }
-    boids.get(i).dir = PVector.add(boids.get(i).dir, accel);
-    //break;
   }
+  
+  // no neighbors : return 0
+  if (nearBoidsCount == 0) {
+    return res;
+  }
+    
+  // divide by nearBoidsCount and normalize
+  res = PVector.div(res, nearBoidsCount).normalize();
+  return res;
 }
+
+
+PVector cohesion(Boid boid) {
+  PVector res = new PVector(0, 0);
+  int nearBoidsCount = 0;
+  
+  for (int i=0; i < boids.size(); ++i) {
+    if(boid.pos == boids.get(i).pos) continue;
+    
+    if(isBoidInPerceptionZone(boid.pos, boids.get(i).pos)) {
+      res = PVector.add(res, boids.get(i).pos);
+      nearBoidsCount++;
+    }
+  }
+  
+  // no neighbors : return 0
+  if (nearBoidsCount == 0) {
+    return res;
+  }
+  
+  // divide by nearBoidsCount
+  res = PVector.div(res, nearBoidsCount);
+  // distance from current boid to the center of mass of his neighbors
+  res = PVector.sub(res, boid.pos).normalize();
+  return res;
+}
+
+
+PVector repulsion(Boid boid) {
+  PVector res = new PVector(0, 0);
+  int nearBoidsCount = 0;
+  
+  for (int i=0; i < boids.size(); ++i) {
+    if(boid.pos == boids.get(i).pos) continue;
+    
+    if(isBoidInRepulsionZone(boid.pos, boids.get(i).pos)) {
+      PVector dist = PVector.sub(boid.pos, boids.get(i).pos);
+      res = PVector.add(res, dist);
+      nearBoidsCount++;
+    }
+  }
+  
+  // no neighbors : return 0
+  if (nearBoidsCount == 0) {
+    return res;
+  }
+  
+  // divide by nearBoidsCount
+  res = PVector.div(res, nearBoidsCount);
+  
+  // distance from current boid to the center of mass of his neighbors
+  res = PVector.sub(res, boid.pos).normalize();
+  //res = PVector.mult(res, -1).normalize();
+  return res;
+}
+
 
 void updateBoidsPosition() {
   for (int i=0; i < boids.size(); ++i) {
-    //PVector vect = PVector.mult(PVector.sub(boids.get(i).dir, boids.get(i).pos), speed);
+    PVector alignmentV  = alignment(boids.get(i)).mult(0.1);
+    PVector cohesionV   = cohesion(boids.get(i)).mult(0.5);
+    PVector repulsionV  = repulsion(boids.get(i)).mult(0.1);
+    
+    boids.get(i).dir = boids.get(i).dir.add(alignmentV).add(cohesionV).add(repulsionV);
+    
+    // normilize and set speed
+    boids.get(i).dir.normalize();
+    boids.get(i).dir = PVector.mult(boids.get(i).dir, speed);
+    
     boids.get(i).pos = PVector.add(boids.get(i).pos, boids.get(i).dir);
     
-    if (boids.get(i).pos.x < 0 || boids.get(i).pos.x > width){
-      boids.get(i).dir.x = -boids.get(i).dir.x * 0.8;
+    if (boids.get(i).pos.x <= 0 || boids.get(i).pos.x >= width){
+      boids.get(i).dir.x = -boids.get(i).dir.y;
     }
-    if (boids.get(i).pos.y < 0 || boids.get(i).pos.y > height){
-      boids.get(i).dir.y = -boids.get(i).dir.y * 0.8;
+    if (boids.get(i).pos.y <= 0 || boids.get(i).pos.y >= height){
+      boids.get(i).dir.y = -boids.get(i).dir.y;
     }
   }
 }
@@ -96,35 +159,16 @@ void displayBoids() {
 
 
 void initBoids(int boidsNum) {
-  
-  /*Boid boid1 = new Boid();
-  boid1.pos = new PVector(300, 300);
-  PVector temp = new PVector(500, 500);        // random point
-    PVector subV = PVector.sub(temp, boid1.pos).normalize();  // normilized vector between 2 points
-    PVector resMult = PVector.mult(subV, 100);                // increase normilized vector length
-    boid1.dir = PVector.add(boid1.pos, resMult);               // move vector
-    
-    Boid boid2 = new Boid();
-  boid2.pos = new PVector(240, 300);
-  PVector temp2 = new PVector(200, 200);        // random point
-    PVector subV2 = PVector.sub(temp2, boid2.pos).normalize();  // normilized vector between 2 points
-    PVector resMult2 = PVector.mult(subV2, 100);                // increase normilized vector length
-    boid2.dir = PVector.add(boid2.pos, resMult2);               // move vector
-    
-    boids.add(boid1);
-    boids.add(boid2);*/
-  
-  
   for (int i = 0; i < boidsNum; i++) {
     Boid boid = new Boid();
-    boid.pos = new PVector(random(width/20), random(height/20));
+    boid.pos = new PVector(random(width), random(height));
     
     // generate random direction
-    PVector temp = new PVector(random(width/800), random(height/800));        // random point
-    //PVector subV = PVector.sub(temp, boid.pos).normalize();  // normilized vector between 2 points
-    //PVector resMult = PVector.mult(subV, maxDirLength);                // increase normilized vector length
-    //boid.dir = PVector.add(boid.pos, resMult);               // move vector
-      boid.dir = temp;
+    PVector temp = new PVector(random(width), random(height));        // random point
+    PVector subV = PVector.sub(temp, boid.pos).normalize();  // normilized vector between 2 points
+    PVector resMult = PVector.mult(subV, maxDirLength);                // increase normilized vector length
+    boid.dir = PVector.add(boid.pos, resMult);               // move vector
+    //boid.dir = temp;
     
     boids.add(boid);
   }
@@ -133,15 +177,11 @@ void initBoids(int boidsNum) {
 
 // c : center of perception zone
 boolean isBoidInPerceptionZone(PVector c, PVector boid) {
-  float a = pow(boid.x - c.x, 2);
-  float b = pow(boid.y - c.y, 2);
-  return a + b < pow(perception, 2);
+  return PVector.dist(c, boid) < perception;
 }
 
 
 // c : center of repulsion zone
 boolean isBoidInRepulsionZone(PVector c, PVector boid) {
-  float a = pow(boid.x - c.x, 2);
-  float b = pow(boid.y - c.y, 2);
-  return a + b < pow(repulsion, 2);
+  return PVector.dist(c, boid) < repulsion;
 }
